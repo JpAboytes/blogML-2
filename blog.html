@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predicción Cold-Start en Moda Online</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 10.5pt;
+    line-height: 1.65;
+    color: #111;
+    background: #fff;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 48px 64px;
+  }
+
+  /* ── MASTHEAD ─────────────────────────── */
+  .masthead {
+    border-top: 5px solid #000;
+    padding-top: 10px;
+  }
+  .masthead-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding-bottom: 7px;
+    border-bottom: 1px solid #000;
+  }
+  .pub-name {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-weight: bold;
+  }
+  .pub-meta {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #555;
+    text-align: right;
+  }
+
+  /* ── HEADLINE ─────────────────────────── */
+  .headline-block {
+    text-align: center;
+    padding: 22px 0 18px;
+    border-bottom: 3px solid #000;
+    margin-bottom: 26px;
+  }
+  .kicker {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: #666;
+    margin-bottom: 12px;
+  }
+  h1.main-title {
+    font-size: 29pt;
+    font-weight: bold;
+    line-height: 1.05;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    margin-bottom: 14px;
+  }
+  .deck {
+    font-size: 12pt;
+    font-style: italic;
+    color: #333;
+    line-height: 1.45;
+    max-width: 540px;
+    margin: 0 auto 14px;
+  }
+  .byline {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #777;
+    border-top: 1px solid #bbb;
+    padding-top: 10px;
+  }
+
+  /* ── STATS STRIP ──────────────────────── */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border: 1.5px solid #000;
+    margin-bottom: 30px;
+  }
+  .stat-cell {
+    padding: 15px 10px;
+    text-align: center;
+    border-right: 1px solid #ccc;
+  }
+  .stat-cell:last-child { border-right: none; }
+  .stat-num {
+    display: block;
+    font-size: 21pt;
+    font-weight: bold;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .stat-lbl {
+    display: block;
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: #666;
+    margin-top: 5px;
+  }
+
+  /* ── SECTION HEADERS ──────────────────── */
+  h2 {
+    font-size: 13pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-top: 2px solid #000;
+    border-bottom: 1px solid #000;
+    padding: 5px 0;
+    margin: 38px 0 18px;
+  }
+  .section-num {
+    font-size: 7pt;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #999;
+    display: block;
+    margin-bottom: 1px;
+  }
+  h3 {
+    font-size: 10.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid #aaa;
+    padding-bottom: 3px;
+    margin: 22px 0 11px;
+  }
+  h4 {
+    font-size: 10pt;
+    font-weight: bold;
+    font-style: italic;
+    margin: 14px 0 6px;
+  }
+
+  /* ── BODY ─────────────────────────────── */
+  p { margin-bottom: 11px; text-align: justify; hyphens: auto; }
+  ul, ol { margin: 6px 0 12px 22px; }
+  li { margin-bottom: 4px; }
+  strong { font-weight: bold; }
+  em { font-style: italic; }
+
+  /* ── DROP CAP ─────────────────────────── */
+  .dropcap::first-letter {
+    float: left;
+    font-size: 46pt;
+    line-height: 0.82;
+    font-weight: bold;
+    margin-right: 5px;
+    margin-top: 4px;
+    font-family: Georgia, serif;
+  }
+
+  /* ── TWO-COL ──────────────────────────── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin: 16px 0;
+  }
+  .col { padding-right: 26px; }
+  .col + .col {
+    padding-right: 0;
+    padding-left: 26px;
+    border-left: 1px solid #bbb;
+  }
+
+  /* ── THREE-COL ────────────────────────── */
+  .three-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    margin: 16px 0;
+  }
+  .three-col .col { padding-right: 20px; }
+  .three-col .col + .col {
+    padding-right: 20px;
+    padding-left: 20px;
+    border-left: 1px solid #bbb;
+  }
+  .three-col .col:last-child { padding-right: 0; }
+
+  /* ── PULLQUOTE ────────────────────────── */
+  .pullquote {
+    border-top: 2.5px solid #000;
+    border-bottom: 2.5px solid #000;
+    padding: 15px 0;
+    margin: 26px 44px;
+    text-align: center;
+  }
+  .pullquote p {
+    font-size: 13.5pt;
+    font-style: italic;
+    margin: 0;
+    text-align: center;
+  }
+
+  /* ── DARK BAND ────────────────────────── */
+  .dark-band {
+    background: #111;
+    color: #fff;
+    padding: 20px 24px;
+    margin: 22px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+  }
+  .dark-band-cell {
+    text-align: center;
+    border-right: 1px solid #444;
+    padding: 0 16px;
+  }
+  .dark-band-cell:last-child { border-right: none; }
+  .dark-num {
+    display: block;
+    font-size: 26pt;
+    font-weight: bold;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .dark-lbl {
+    display: block;
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #aaa;
+    margin-top: 5px;
+  }
+  .dark-sub {
+    display: block;
+    font-size: 7.5pt;
+    color: #ccc;
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  /* ── CALLOUT ──────────────────────────── */
+  .callout {
+    background: #f2f2f2;
+    border-left: 3px solid #000;
+    padding: 10px 14px;
+    margin: 14px 0;
+  }
+  .callout-hd {
+    font-size: 7pt;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  .callout p, .callout li { font-size: 9pt; color: #333; margin-bottom: 3px; }
+
+  /* ── SIDE-BY-SIDE FACT BOXES ──────────── */
+  .fact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: #000;
+    border: 1px solid #000;
+    margin: 16px 0;
+  }
+  .fact-cell {
+    background: #fff;
+    padding: 14px 16px;
+  }
+  .fact-cell.shaded { background: #f0f0f0; }
+  .fact-label {
+    font-size: 7pt;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #777;
+    margin-bottom: 4px;
+    font-weight: bold;
+  }
+  .fact-cell p { font-size: 9pt; margin: 0; text-align: left; }
+
+  /* ── TIMELINE ─────────────────────────── */
+  .timeline { margin: 18px 0; }
+  .tl-item {
+    display: flex;
+    gap: 0;
+    margin-bottom: 0;
+  }
+  .tl-step {
+    width: 32px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .tl-dot {
+    width: 12px;
+    height: 12px;
+    border: 2px solid #000;
+    background: #fff;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .tl-dot.filled { background: #000; }
+  .tl-line {
+    width: 2px;
+    flex: 1;
+    background: #ccc;
+    min-height: 14px;
+  }
+  .tl-content {
+    padding: 0 0 16px 12px;
+    flex: 1;
+  }
+  .tl-title {
+    font-size: 8.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+  .tl-desc { font-size: 9pt; color: #444; margin-top: 2px; }
+
+  /* ── TABLES ───────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 9pt;
+  }
+  thead tr {
+    border-top: 2px solid #000;
+    border-bottom: 1px solid #000;
+  }
+  th {
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 5px 8px;
+    text-align: left;
+    font-size: 7.5pt;
+  }
+  td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #e0e0e0;
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: 1.5px solid #000; }
+  tr.hl { background: #f0f0f0; font-weight: bold; }
+
+  /* ── METRIC BARS ──────────────────────── */
+  .bar-legend {
+    display: flex;
+    gap: 20px;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 10px;
+    color: #555;
+  }
+  .bar-legend-item { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 22px; height: 10px; display: inline-block; }
+  .metric-row {
+    display: flex;
+    align-items: center;
+    margin: 5px 0;
+  }
+  .metric-name {
+    width: 140px;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+    color: #555;
+  }
+  .bar-track {
+    flex: 1;
+    height: 12px;
+    background: #e8e8e8;
+  }
+  .bar-fill { height: 100%; }
+  .bar-lr  { background: #b0b0b0; }
+  .bar-rf  { background: #555; }
+  .bar-xgb { background: #111; }
+  .metric-val {
+    width: 46px;
+    text-align: right;
+    font-weight: bold;
+    font-size: 8.5pt;
+    padding-left: 7px;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── DECISION TABLE ───────────────────── */
+  .decision-box {
+    border: 1.5px solid #000;
+    padding: 12px 16px;
+    margin: 16px 0;
+  }
+  .decision-box-hd {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: bold;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 5px;
+    margin-bottom: 9px;
+  }
+
+  /* ── RULE ─────────────────────────────── */
+  hr { border: none; border-top: 1px solid #d0d0d0; margin: 22px 0; }
+  hr.thick { border-top: 2px solid #000; margin: 32px 0; }
+
+  /* ── CAPTION ──────────────────────────── */
+  .caption {
+    font-size: 7.5pt;
+    color: #777;
+    font-style: italic;
+    text-align: center;
+    margin-top: -8px;
+    margin-bottom: 14px;
+  }
+
+  /* ── FOOTER ───────────────────────────── */
+  .page-footer {
+    border-top: 2px solid #000;
+    margin-top: 52px;
+    padding-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: #888;
+  }
+</style>
+</head>
+<body>
+
+<!-- MASTHEAD -->
+<header class="masthead">
+  <div class="masthead-top">
+    <span class="pub-name">Aprendizaje de Máquina — ML26 &nbsp;·&nbsp; CETYS Universidad</span>
+    <span class="pub-meta">Proyecto Final II &nbsp;</span>
+  </div>
+</header>
+
+<!-- HEADLINE -->
+<div class="headline-block">
+  <h1 class="main-title">¿Comprará este cliente<br>el nuevo producto?</h1>
+  <p class="deck">Diseño e implementación de un sistema de predicción de compras para ítems de moda recién lanzados, abordando el cold-start mediante ingeniería de atributos y modelos de ensamble.</p>
+  <p class="byline">Por: Equipo JJJ &nbsp;·&nbsp; Aprendizaje de Máquina, Enero–Junio 2026</p>
+</div>
+
+<!-- STATS STRIP -->
+<div class="stats-strip">
+  <div class="stat-cell">
+    <span class="stat-num">6,892</span>
+    <span class="stat-lbl">Compras en train</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-num">4,719</span>
+    <span class="stat-lbl">Pares a predecir</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-num">10</span>
+    <span class="stat-lbl">Categorías</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-num">0.911</span>
+    <span class="stat-lbl">AUC-ROC final</span>
+  </div>
+  <div class="stat-cell">
+    <span class="stat-num">13</span>
+    <span class="stat-lbl">Atributos de entrada</span>
+  </div>
+</div>
+
+
+<!-- ═══ I. PROBLEMA ═══════════════════════════════════════════ -->
+<h2><span class="section-num">Sección I</span>Planteamiento del Problema</h2>
+
+<p class="dropcap">Una tienda de moda en línea necesita anticipar, antes del lanzamiento de un nuevo producto, qué clientes de su base existente tienen alta probabilidad de comprarlo durante los primeros 60 días. La fecha de corte del sistema es el <strong>14 de mayo de 2026</strong>.</p>
+
+<div class="two-col">
+<div class="col">
+  <p>Los ítems a evaluar fueron lanzados <em>después</em> de esa fecha. Por definición carecen de historial: cero compras previas, cero reseñas, cero vistas. Esto configura el <strong>cold-start problem</strong>: la señal habitual de popularidad o calificación del producto simplemente no existe.</p>
+</div>
+<div class="col">
+  <p>El segundo obstáculo es estructural: el dataset de entrenamiento contiene <em>únicamente compras confirmadas</em>. No hay registro de lo que un cliente decidió no comprar, lo que impide entrenar un clasificador binario directamente sin generar ejemplos negativos artificialmente.</p>
+</div>
+</div>
+
+<div class="fact-grid">
+  <div class="fact-cell shaded">
+    <div class="fact-label">Atributos disponibles en test</div>
+    <p>Categoría del ítem, precio, fecha de lanzamiento, perfil demográfico del cliente.</p>
+  </div>
+  <div class="fact-cell">
+    <div class="fact-label">Atributos NO disponibles en test</div>
+    <p>Calificaciones, reseñas, vistas al producto, dispositivo de compra, timestamp de compra.</p>
+  </div>
+</div>
+
+
+<!-- ═══ II. JUSTIFICACIÓN ══════════════════════════════════════ -->
+<h2><span class="section-num">Sección II</span>Justificación</h2>
+
+<div class="three-col">
+<div class="col">
+  <h4>Gestión de inventario</h4>
+  <p>Proyectar demanda antes del lanzamiento permite optimizar niveles de stock y reducir costos de sobreproducción, problema endémico en la industria textil.</p>
+</div>
+<div class="col">
+  <h4>Marketing dirigido</h4>
+  <p>Identificar con anticipación a los clientes con mayor propensión de compra concentra el presupuesto publicitario donde el retorno sobre inversión es mayor.</p>
+</div>
+<div class="col">
+  <h4>Experiencia de usuario</h4>
+  <p>Recomendar proactivamente productos alineados con preferencias históricas mejora la tasa de conversión y la fidelización a largo plazo.</p>
+</div>
+</div>
+
+
+<!-- ═══ III. ESTADO DEL ARTE ═══════════════════════════════════ -->
+<h2><span class="section-num">Sección III</span>Estado del Arte</h2>
+
+<p>Los sistemas de recomendación son el enfoque dominante para predecir comportamiento de compra. Existen dos familias principales y una alternativa tabular menos explorada en academia pero prevalente en práctica industrial:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Enfoque</th>
+      <th>Idea central</th>
+      <th>Cold-start de ítem</th>
+      <th>Complejidad</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Collaborative Filtering</strong> (SVD, ALS, Neural CF)</td>
+      <td>Modela afinidad en espacio latente a partir de interacciones pasadas</td>
+      <td>No resuelve — el ítem necesita historial de interacción para tener representación</td>
+      <td>Media–Alta</td>
+    </tr>
+    <tr>
+      <td><strong>Content-Based Filtering</strong></td>
+      <td>Recomienda ítems similares a los consumidos por el usuario según atributos del contenido</td>
+      <td>Resuelve parcialmente si los atributos del ítem son ricos</td>
+      <td>Baja–Media</td>
+    </tr>
+    <tr class="hl">
+      <td><strong>Clasificación tabular + features de perfil</strong></td>
+      <td>Par (cliente, ítem) → clasificador binario con atributos cruzados derivados del historial</td>
+      <td>Resuelve por diseño: no requiere historial del ítem</td>
+      <td>Baja–Media</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Los enfoques de deep learning secuencial (BERT4Rec, two-tower models de YouTube/Pinterest) ofrecen mayor capacidad expresiva pero siguen requiriendo alguna señal del ítem y añaden complejidad de infraestructura que no se justifica para el tamaño de este dataset.</p>
+
+
+<!-- ═══ IV. SOLUCIÓN ═══════════════════════════════════════════ -->
+<h2><span class="section-num">Sección IV</span>Idea Principal de la Solución</h2>
+
+<p>La solución reformula el problema como <strong>clasificación binaria supervisada</strong>. En lugar de modelar compatibilidad en un espacio latente, el modelo aprende directamente a partir de tres fuentes de información que están disponibles tanto en entrenamiento como en producción:</p>
+
+<div class="dark-band">
+  <div class="dark-band-cell">
+    <span class="dark-num">1</span>
+    <span class="dark-lbl">Perfil del cliente</span>
+    <span class="dark-sub">Quién es, cuánto gasta,<br>qué categorías prefiere</span>
+  </div>
+  <div class="dark-band-cell">
+    <span class="dark-num">2</span>
+    <span class="dark-lbl">Atributos del ítem</span>
+    <span class="dark-sub">Categoría, precio,<br>fecha de lanzamiento</span>
+  </div>
+  <div class="dark-band-cell">
+    <span class="dark-num">3</span>
+    <span class="dark-lbl">Intersección</span>
+    <span class="dark-sub">¿El ítem encaja con<br>el perfil del cliente?</span>
+  </div>
+</div>
+
+<div class="pullquote">
+  <p>"No preguntamos si este ítem es popular — preguntamos si este cliente tiende a comprar ítems como éste."</p>
+</div>
+
+
+<!-- ═══ V. ANÁLISIS EXPLORATORIO ══════════════════════════════ -->
+<h2><span class="section-num">Sección V</span>Análisis Exploratorio y Desarrollo</h2>
+
+<h3>Hallazgo 1 — Distribución Sesgada de Compras</h3>
+
+<div class="two-col">
+<div class="col">
+  <p>La distribución de compras por cliente es altamente asimétrica: la mayoría de clientes realiza entre 1 y 10 compras, mientras una minoría de clientes "power users" concentra una fracción desproporcionada del volumen total.</p>
+  <p>Esta asimetría tiene una implicación directa en la generación de negativos: un muestreo uniforme que asigna el mismo número de negativos a todos los clientes ignoraría que los clientes más activos proveen señal mucho más rica.</p>
+</div>
+<div class="col">
+  <p>El mismo patrón se repite por ítem: algunos productos acumulan muchas compras mientras la mayoría tiene pocas. Los ítems populares son candidatos naturales como negativos informativos — si un ítem es comprado por el 30% de los clientes y este cliente en particular no lo adquirió, eso dice algo sobre sus preferencias.</p>
+  <div class="callout">
+    <div class="callout-hd">Consecuencia de diseño</div>
+    <p>La estrategia de negativos debe ser proporcional a la actividad del cliente, no uniforme por cliente.</p>
+  </div>
+</div>
+</div>
+
+<hr>
+
+<h3>Hallazgo 2 — Solo Existen Etiquetas Positivas</h3>
+
+<p>El dataset crudo contiene <em>únicamente</em> compras confirmadas (label = 1). Entrenar un clasificador en este estado es imposible: no hay frontera de decisión que aprender cuando todos los ejemplos pertenecen a la misma clase. La generación de negativos no es preprocesamiento menor — es una decisión de diseño que determina qué aprende el modelo.</p>
+
+<div class="fact-grid">
+  <div class="fact-cell shaded">
+    <div class="fact-label">Estrategia elegida — Smart Negatives</div>
+    <p>Asigna mayor peso a candidatos negativos con <strong>desajuste de categoría</strong> (el ítem no es de las categorías favoritas del cliente) y <strong>desajuste de precio</strong> (el precio está fuera del rango histórico del cliente). El resultado son negativos más informativos: la frontera de decisión aprendida es más nítida.</p>
+  </div>
+  <div class="fact-cell">
+    <div class="fact-label">Por qué no muestreo aleatorio simple</div>
+    <p>Los negativos aleatorios son mayoritariamente "fáciles" — ítems de categorías completamente distintas al perfil del cliente. El modelo aprende a clasificar por actividad superficial, no por preferencia real. Los negativos inteligentes fuerzan al modelo a aprender la frontera de preferencia con mayor precisión.</p>
+  </div>
+</div>
+
+<hr>
+
+<h3>Hallazgo 3 — Atributos No Disponibles en Test</h3>
+
+<p>Varias columnas del dataset de entrenamiento tienen correlación con la compra, pero son <strong>nulas en test por diseño</strong>. Usarlas en entrenamiento crearía un mismatch de distribución que invalidaría el modelo al momento de predecir sobre ítems nuevos:</p>
+
+<div class="two-col">
+<div class="col">
+  <ul>
+    <li><strong>item_avg_rating</strong> — el ítem nuevo no tiene calificaciones</li>
+    <li><strong>item_num_ratings</strong> — sin reseñas en el lanzamiento</li>
+    <li><strong>customer_item_views</strong> — sin vistas antes del lanzamiento</li>
+  </ul>
+</div>
+<div class="col">
+  <ul>
+    <li><strong>purchase_device</strong> — no hubo compra aún</li>
+    <li><strong>purchase_item_rating</strong> — calificación post-compra, no existe</li>
+    <li><strong>purchase_timestamp</strong> — sin timestamp de transacción</li>
+  </ul>
+</div>
+</div>
+
+<hr>
+
+<h3>Ingeniería de Atributos del Cliente</h3>
+
+<p>Dado que ningún atributo de la transacción está disponible en test, el vector de características del cliente se construye <em>exclusivamente</em> a partir de su historial de compras. Este perfil se calcula una sola vez sobre train y se persiste para reutilizarse en inferencia.</p>
+
+<table>
+  <thead>
+    <tr><th>Atributo</th><th>Señal que captura</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Edad y antigüedad en plataforma</td><td>Etapa de vida y fidelidad — grupos distintos tienen preferencias diferenciadas</td></tr>
+    <tr><td>Gasto promedio y desviación estándar</td><td>Rango de precios aceptable; std alta indica cliente ecléctico, std baja indica nicho definido</td></tr>
+    <tr><td>Total de compras históricas</td><td>Nivel de actividad — clientes activos tienen perfil más confiable</td></tr>
+    <tr><td>Días desde la última compra</td><td>Recencia — clientes recientes tienen mayor propensión de recompra inmediata</td></tr>
+    <tr><td>Top 3 categorías más compradas</td><td>Perfil de gustos; es la señal más directa de afinidad con el ítem nuevo</td></tr>
+    <tr><td>Dispositivo preferido</td><td>Mobile vs. desktop correlaciona con tipo de ítem y monto</td></tr>
+    <tr><td>Calificación promedio otorgada</td><td>Clientes con alto engagement califican más y tienden a recomprar</td></tr>
+  </tbody>
+</table>
+
+<h3>Atributos Cruzados Cliente–Ítem</h3>
+
+<p>Las señales más potentes no son del cliente ni del ítem de forma aislada, sino de su <em>relación</em>. Se construyeron dos tipos de atributos cruzados:</p>
+
+<div class="fact-grid">
+  <div class="fact-cell shaded">
+    <div class="fact-label">Match de categoría (top 1 / 2 / 3)</div>
+    <p>Indicador binario: ¿la categoría del ítem nuevo coincide con la 1ª, 2ª o 3ª categoría más comprada por el cliente? Es el atributo con mayor poder predictivo del modelo: un cliente que siempre compra zapatos y el ítem nuevo es calzado tiene señal directa de afinidad.</p>
+  </div>
+  <div class="fact-cell">
+    <div class="fact-label">Precio relativo al perfil</div>
+    <p>Diferencia entre el precio del ítem y el gasto promedio histórico del cliente. Una prenda de $500 es costosa para un cliente con historial de $150, pero barata para uno con historial de $800. El precio absoluto no captura esta distinción — el precio relativo sí.</p>
+  </div>
+</div>
+
+<h3>Split de Validación Temporal</h3>
+
+<p>Un split aleatorio produciría un conjunto de validación que no replica la distribución del test real. Se implementó un <strong>split por fecha de lanzamiento del ítem</strong>:</p>
+
+<div class="timeline">
+  <div class="tl-item">
+    <div class="tl-step"><div class="tl-dot filled"></div><div class="tl-line"></div></div>
+    <div class="tl-content">
+      <div class="tl-title">Entrenamiento — ítems con más de 60 días desde lanzamiento</div>
+      <div class="tl-desc">14,530 ejemplos. Ítems con historial suficiente para que el modelo aprenda patrones estables.</div>
+    </div>
+  </div>
+  <div class="tl-item">
+    <div class="tl-step"><div class="tl-dot filled"></div><div class="tl-line"></div></div>
+    <div class="tl-content">
+      <div class="tl-title">Validación — ítems con 0–60 días desde lanzamiento</div>
+      <div class="tl-desc">6,146 ejemplos (1,831 positivos). Replica la distribución del test: ítems recientes con poca señal histórica.</div>
+    </div>
+  </div>
+  <div class="tl-item">
+    <div class="tl-step"><div class="tl-dot"></div></div>
+    <div class="tl-content">
+      <div class="tl-title">Test real — ítems lanzados después del 14-05-2026</div>
+      <div class="tl-desc">4,719 pares a predecir. Cero historial de interacción — el escenario de producción real.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ VI. EXPERIMENTOS ═══════════════════════════════════════ -->
+<h2><span class="section-num">Sección VI</span>Experimentación y Análisis de Resultados</h2>
+
+<h3>Modelos Evaluados</h3>
+
+<div class="three-col">
+<div class="col">
+  <h4>Regresión Logística</h4>
+  <p>Baseline lineal. Su rol es verificar que la ingeniería de atributos tiene señal real. Si un modelo lineal obtiene resultados razonables, el diseño de features es correcto. No captura interacciones entre atributos.</p>
+</div>
+<div class="col">
+  <h4>Random Forest</h4>
+  <p>200 árboles de decisión promediados. Captura interacciones automáticamente. Configurado con profundidad máxima 10 y mínimo 5 ejemplos por hoja para controlar overfitting.</p>
+</div>
+<div class="col">
+  <h4>XGBoost</h4>
+  <p>Gradient boosting secuencial. Incluye regularización L1/L2 y subsampling. Learning rate conservador (0.05) con 200 estimadores para maximizar generalización.</p>
+</div>
+</div>
+
+<p>Los tres modelos utilizan <strong>SMOTE</strong> durante el entrenamiento para generar ejemplos positivos sintéticos y compensar el desbalance de clases. SMOTE se aplica antes de ajustar el clasificador, nunca sobre el conjunto de validación.</p>
+
+<hr>
+
+<h3>Resultados en Validación Temporal</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Modelo</th>
+      <th>AUC-ROC</th>
+      <th>F1 Ponderado</th>
+      <th>F1 Clase +1</th>
+      <th>Precisión +1</th>
+      <th>Recall +1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Regresión Logística</td>
+      <td>0.853</td>
+      <td>0.770</td>
+      <td>0.692</td>
+      <td>0.559</td>
+      <td>0.907</td>
+    </tr>
+    <tr class="hl">
+      <td>Random Forest</td>
+      <td><strong>0.911</strong></td>
+      <td><strong>0.852</strong></td>
+      <td><strong>0.789</strong></td>
+      <td>0.666</td>
+      <td><strong>0.967</strong></td>
+    </tr>
+    <tr>
+      <td>XGBoost</td>
+      <td>0.911</td>
+      <td>0.851</td>
+      <td>0.781</td>
+      <td><strong>0.676</strong></td>
+      <td>0.925</td>
+    </tr>
+  </tbody>
+</table>
+<p class="caption">Métricas en el conjunto de validación temporal (6,146 ejemplos, 29.8% positivos). Modelo destacado: Random Forest.</p>
+
+<!-- Metric bars -->
+<div style="margin: 20px 0;">
+  <div class="bar-legend">
+    <div class="bar-legend-item"><span class="swatch bar-lr"></span>Regresión Logística</div>
+    <div class="bar-legend-item"><span class="swatch bar-rf"></span>Random Forest</div>
+    <div class="bar-legend-item"><span class="swatch bar-xgb"></span>XGBoost</div>
+  </div>
+
+  <div style="font-size:7.5pt; text-transform:uppercase; letter-spacing:0.1em; color:#888; margin-bottom:6px;">AUC-ROC</div>
+  <div class="metric-row"><span class="metric-name">Logística</span><div class="bar-track"><div class="bar-fill bar-lr" style="width:85.3%"></div></div><span class="metric-val">0.853</span></div>
+  <div class="metric-row"><span class="metric-name">Random Forest</span><div class="bar-track"><div class="bar-fill bar-rf" style="width:91.1%"></div></div><span class="metric-val">0.911</span></div>
+  <div class="metric-row"><span class="metric-name">XGBoost</span><div class="bar-track"><div class="bar-fill bar-xgb" style="width:91.1%"></div></div><span class="metric-val">0.911</span></div>
+
+  <div style="font-size:7.5pt; text-transform:uppercase; letter-spacing:0.1em; color:#888; margin:12px 0 6px;">F1 Ponderado</div>
+  <div class="metric-row"><span class="metric-name">Logística</span><div class="bar-track"><div class="bar-fill bar-lr" style="width:77.0%"></div></div><span class="metric-val">0.770</span></div>
+  <div class="metric-row"><span class="metric-name">Random Forest</span><div class="bar-track"><div class="bar-fill bar-rf" style="width:85.2%"></div></div><span class="metric-val">0.852</span></div>
+  <div class="metric-row"><span class="metric-name">XGBoost</span><div class="bar-track"><div class="bar-fill bar-xgb" style="width:85.1%"></div></div><span class="metric-val">0.851</span></div>
+</div>
+
+<hr>
+
+<h3>Análisis de los Resultados</h3>
+
+<div class="two-col">
+<div class="col">
+  <h4>Brecha Logística → Ensemble: +6.8 pts AUC</h4>
+  <p>El salto de 0.853 a 0.911 confirma que existen interacciones no-lineales entre atributos que el modelo lineal no puede capturar. La señal más probable es la combinación de match de categoría con precio relativo: un cliente en su categoría favorita <em>y</em> dentro de su rango de precios tiene propensión muy superior a cada señal por separado.</p>
+</div>
+<div class="col">
+  <h4>RF vs. XGBoost: empate técnico</h4>
+  <p>Ambos modelos alcanzan exactamente AUC-ROC 0.911. XGBoost muestra precisión ligeramente mayor (0.676 vs 0.666), Random Forest muestra recall ligeramente mayor (0.967 vs 0.925). La elección óptima depende del costo relativo de cada error: falsos positivos (campañas innecesarias) vs. falsos negativos (ventas perdidas).</p>
+</div>
+</div>
+
+<div class="dark-band" style="grid-template-columns: 1fr 1fr;">
+  <div class="dark-band-cell">
+    <span class="dark-num">+6.8%</span>
+    <span class="dark-lbl">Ganancia en AUC-ROC</span>
+    <span class="dark-sub">Logística → Ensemble</span>
+  </div>
+  <div class="dark-band-cell">
+    <span class="dark-num">96.7%</span>
+    <span class="dark-lbl">Recall clase positiva (RF)</span>
+    <span class="dark-sub">1 de cada 30 compras reales no detectada</span>
+  </div>
+</div>
+
+
+<!-- ═══ VII. CONCLUSIÓN ════════════════════════════════════════ -->
+<h2><span class="section-num">Sección VII</span>Conclusión y Trabajo Futuro</h2>
+
+<div class="two-col">
+<div class="col">
+  <h4>Lo que resolvimos</h4>
+  <p>Se desarrolló un sistema de clasificación binaria que predice compras de ítems nuevos sin requerir historial del producto. El cold-start se resuelve construyendo el perfil del cliente desde su historial y cruzándolo con los atributos intrínsecos del ítem nuevo.</p>
+
+  <h4>Lo que aprendimos del EDA</h4>
+  <p>La distribución sesgada de compras por cliente motivó una generación de negativos proporcional a la actividad. La presencia de atributos solo disponibles en train obligó a diseñar features que fueran consistentes entre entrenamiento y producción desde el inicio.</p>
+
+  <h4>Ideas que fueron clave</h4>
+  <p>El match de categoría cliente-ítem y el precio relativo al perfil histórico resultaron ser las señales más informativas. El split temporal para validación, que replica la distribución del test real, fue crítico para obtener una evaluación honesta del modelo.</p>
+</div>
+<div class="col">
+  <h4>Resultados obtenidos</h4>
+  <p>Los modelos de ensamble (RF y XGBoost) alcanzaron AUC-ROC de <strong>0.911</strong>, frente a 0.853 de la Regresión Logística. El modelo seleccionado para la competencia fue XGBoost por su balance más equilibrado entre precisión y recall.</p>
+
+  <h4>Trabajo futuro</h4>
+  <ul>
+    <li><strong>Búsqueda de hiperparámetros</strong> (WandB Sweeps sobre XGBoost) para ganar 2–4 pts adicionales de AUC-ROC</li>
+    <li><strong>Features de imagen</strong> via CNN pre-entrenada si se dispone de las imágenes del catálogo</li>
+    <li><strong>Calibración de probabilidades</strong> para ajustar el umbral de decisión según el costo del error de negocio</li>
+    <li><strong>Modelo híbrido</strong> que combine el perfil explícito con señal colaborativa entre clientes similares</li>
+  </ul>
+</div>
+</div>
+
+<div class="pullquote">
+  <p>"El cold-start no es un obstáculo — es una oportunidad de diseñar mejor las features."</p>
+</div>
+
+<!-- FOOTER -->
+<div class="page-footer">
+  <span>ML26 · CETYS Universidad · Enero–Junio 2026</span>
+  <span>Equipo JJJ · Proyecto Final II · Predicción de Compras</span>
+</div>
+
+</body>
+</html>
